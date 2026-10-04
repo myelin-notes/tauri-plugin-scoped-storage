@@ -81,6 +81,12 @@ impl<R: Runtime> ScopedStorage<R> {
         self.run_mobile("readFile", req)
     }
 
+    #[cfg(target_os = "android")]
+    pub fn file_name(&self, uri: String) -> Result<String, ScopedStorageError> {
+        self.run_mobile::<FileNameResponse, _>("fileName", FileNameRequest { uri })
+            .map(|response| response.name)
+    }
+
     pub fn write_file(&self, req: WriteFileRequest) -> Result<(), ScopedStorageError> {
         self.run_mobile("writeFile", req)
     }
@@ -139,4 +145,16 @@ impl<R: Runtime> ScopedStorage<R> {
 #[derive(Debug, Deserialize)]
 struct PickFolderResponse {
     folder: FolderHandle,
+}
+
+#[cfg(target_os = "android")]
+#[derive(Serialize)]
+struct FileNameRequest {
+    uri: String,
+}
+
+#[cfg(target_os = "android")]
+#[derive(Deserialize)]
+struct FileNameResponse {
+    name: String,
 }

@@ -3,7 +3,9 @@ package com.danielerolli.tauri.scopedstorage
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
 import androidx.activity.result.ActivityResult
 import androidx.documentfile.provider.DocumentFile
 import app.tauri.annotation.ActivityCallback
@@ -35,6 +37,11 @@ class FolderIdArgs {
 class ReadFileArgs {
     lateinit var folderId: String
     lateinit var path: String
+}
+
+@InvokeArg
+class FileNameArgs {
+    lateinit var uri: String
 }
 
 @InvokeArg
@@ -267,6 +274,27 @@ class ScopedStoragePlugin(private val activity: Activity) : Plugin(activity) {
                     ?: fail(ErrorCodes.IO_ERROR, "Failed to open input stream")
 		            val unsigned = bytes.map { it.toInt() and 0xFF }
                 invoke.resolve(JSObject().apply { put("data", JSArray(unsigned.toList())) })
+            } catch (error: Throwable) {
+                invoke.rejectScoped(error)
+            }
+        }
+    }
+
+    @Command
+    fun fileName(invoke: Invoke) {
+        val args = invoke.parseArgs(FileNameArgs::class.java)
+        ioScope.launch {
+            try {
+                val uri = Uri.parse(args.uri)
+                if (uri.scheme != "content") {
+                    fail(ErrorCodes.INVALID_ARGUMENT, "Expected a content URI")
+                }
+                val name = activity.contentResolver.query(
+                    uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                } ?: fail(ErrorCodes.NOT_FOUND, "File name unavailable")
+                invoke.resolve(JSObject().apply { put("name", name) })
             } catch (error: Throwable) {
                 invoke.rejectScoped(error)
             }
