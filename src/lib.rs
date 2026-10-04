@@ -7,6 +7,7 @@ mod mobile;
 mod models;
 mod path;
 
+pub use commands::read_file;
 pub use error::ScopedStorageError;
 pub use models::*;
 
@@ -19,6 +20,15 @@ use tauri::{
 use desktop::ScopedStorage;
 #[cfg(mobile)]
 use mobile::ScopedStorage;
+
+/// Resolves the display name of an Android content URI granted to the app.
+#[cfg(target_os = "android")]
+pub fn file_name<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    uri: String,
+) -> Result<String, ScopedStorageError> {
+    app.state::<ScopedStorage<R>>().inner().file_name(uri)
+}
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("scoped-storage")
